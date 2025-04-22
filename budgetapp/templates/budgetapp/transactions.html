@@ -1,0 +1,109 @@
+{% extends "budgetapp/base.html" %}
+
+{% block title %}Transactions{% endblock %}
+
+
+{% block content %}
+  <!-- Dashboard Content -->
+  <div class="container mx-auto px-4 py-6">
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold">Total Income</h2>
+        <p class="text-green-500 text-3xl font-bold">${{ total_income }}</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold">Total Expenses</h2>
+        <p class="text-red-500 text-3xl font-bold">${{ total_expense }}</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold">Balance</h2>
+        <p class="text-blue-500 text-3xl font-bold">${{ balance }}</p>
+      </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-semibold mb-4">Transactions</h2>
+        <table class="w-full border">
+          <thead>
+            <tr class="bg-gray-100 text-left">
+              <th class="p-2">Fecha</th>
+              <th class="p-2">Usuario</th>
+              <th class="p-2">Tipo</th>
+              <th class="p-2">Monto</th>
+              <th class="p-2">Descripción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in transactions %}
+            <tr class="border-t">
+              <td class="p-2">{{ t.date }}</td>
+              <td class="p-2">{{ t.user }}</td>
+              <td class="p-2">{{ t.get_type_display }}</td>
+              <td class="p-2 {% if t.type == 'income' %}text-green-600{% else %}text-red-600{% endif %}">
+                {% if t.type == 'expense' %}-{% endif %}${{ t.amount }}
+              </td>
+              <td class="p-2">{{ t.description }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center py-2">No hay transacciones aún.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>      
+          <!-- Add more rows dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
+<!-- Botón -->
+<div class="flex justify-end mb-4">
+    <button id="toggleFormBtn" class="bg-green-600 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-green-700">
+      +
+    </button>
+  </div>
+  
+  <!-- Formulario oculto al inicio -->
+  <div id="transactionForm" class="hidden bg-white rounded-xl shadow p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4">Agregar Transacción</h2>
+    <form method="POST" action="">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Usuario</label>
+          <input type="text" name="user" class="w-full border rounded px-3 py-2" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Tipo</label>
+          <select name="type" class="w-full border rounded px-3 py-2" required>
+            <option value="">Seleccionar</option>
+            <option value="income">Ingreso</option>
+            <option value="expense">Gasto</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Monto</label>
+          <input type="number" name="amount" class="w-full border rounded px-3 py-2" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Descripción</label>
+          <input type="text" name="description" class="w-full border rounded px-3 py-2">
+        </div>
+      </div>
+      <div class="mt-4">
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Guardar</button>
+      </div>
+    </form>
+  </div>
+  <script>
+    const toggleBtn = document.getElementById('toggleFormBtn');
+    const form = document.getElementById('transactionForm');
+  
+    toggleBtn.addEventListener('click', () => {
+      form.classList.toggle('hidden');
+    });
+  </script>
+{% endblock %}
