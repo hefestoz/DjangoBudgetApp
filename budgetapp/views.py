@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.http import HttpResponse
 from .models import Transaction
 from rest_framework.response import Response
@@ -13,24 +14,40 @@ def index(request):
 
     return render(request, 'budgetapp/index.html')
 
+@login_required
 def transactions_info(request):
 
+    # code for transactions from web page
     if request.method == 'POST':
-        # take data from form
-        user = request.POST.get('user')
-        type = request.POST.get('type')
-        amount = request.POST.get('amount')
-        description = request.POST.get('description')
-        
-        #create transaction in database
-        Transaction.objects.create(user=user, type=type, amount=amount, description=description)
+        action = request.POST.get('action')
 
-        return redirect('transactions/')
-     
-    transactions = Transaction.objects.all().order_by('-date')  # Get all transactions sorted by date
-    balance = Transaction.total_balance()
-    total_income = Transaction.total_income()
-    total_expense = Transaction.total_expense()
+        if action == 'create':
+            # take data from form for creation
+            type = request.POST.get('type')
+            amount = request.POST.get('amount')
+            description = request.POST.get('description')
+            # create transaction in database
+            Transaction.objects.create(
+                user=request.user, 
+                type=type, 
+                amount=amount, 
+                description=description
+            )
+        
+        elif action == 'delete':
+            # handle deletion
+            delete_id = request.POST.get('delete_id')  # match the form field name
+            transaction = Transaction.objects.filter(pk=delete_id, user=request.user).first()
+            if transaction:
+                transaction.delete()
+
+        return redirect(reverse('transactions'))
+    #------------------------------------------------------------------------------
+    
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')  # Get all transactions sorted by date
+    balance = Transaction.total_balance_for_user(request=request)
+    total_income = Transaction.total_income(request=request)
+    total_expense = Transaction.total_expense(request=request)
 
     context = {
         'transactions': transactions,
@@ -45,7 +62,7 @@ def transactions_info(request):
 def transaction_list(request):
     if request.method == 'GET':
         transactions = Transaction.objects.all()
-        serializer = TransactionSerializer(transactions, many=True)
+        serializer = TransactionSerializer(transactions, many=True) 
         return Response(serializer.data)
     
     elif request.method == 'POST':

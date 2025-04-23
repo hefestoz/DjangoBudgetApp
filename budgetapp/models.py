@@ -6,7 +6,7 @@ class Transaction(models.Model):
         ('expense', 'Expense'),
     ]
 
-    user = models.CharField(max_length=100)
+    user = models.CharField(auto_created=True, max_length=100)
     date = models.DateField(auto_now_add=True)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     amount = models.IntegerField()  
@@ -19,12 +19,13 @@ class Transaction(models.Model):
         else:
             return -self.amount
     
-       
-    def total_balance_for_user(self):
-        incomes = Transaction.objects.filter(user=self.user, type='income').aggregate(total=models.Sum('amount')) or 0
-        expenses = Transaction.objects.filter(user=self.user, type='expense').aggregate(total=models.Sum('amount')) or 0
-
-        return incomes['total'] - expenses['total']
+    
+    def total_balance_for_user(request):
+        user = request.user
+        incomes = Transaction.objects.filter(user=request.user, type='income').aggregate(total=models.Sum('amount'))['total'] or 0
+        expenses = Transaction.objects.filter(user=request.user, type='expense').aggregate(total=models.Sum('amount'))['total'] or 0
+        balance = incomes - expenses
+        return balance
     
     @classmethod
     def total_balance(self):
@@ -33,13 +34,14 @@ class Transaction(models.Model):
         balance = total_income - total_expense
         return balance
     
-    @classmethod
-    def total_income(self):
-        return Transaction.objects.filter(type='income').aggregate(total=models.Sum('amount'))['total'] or 0
+
+    def total_income(request):
+        incomes = Transaction.objects.filter(user=request.user, type='income').aggregate(total=models.Sum('amount'))['total'] or 0
+        return incomes
     
-    @classmethod
-    def total_expense(self):
-        return Transaction.objects.filter(type='expense').aggregate(total=models.Sum('amount'))['total'] or 0
+    def total_expense(request):
+        expenses = Transaction.objects.filter(user=request.user, type='expense').aggregate(total=models.Sum('amount'))['total'] or 0
+        return expenses
     
     @classmethod
     def __str__(self):

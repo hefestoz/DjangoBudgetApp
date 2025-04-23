@@ -1,11 +1,38 @@
 <nav class="bg-white shadow-md p-4">
-    <div class="container mx-auto flex justify-between items-center">
-      <h1 class="text-2xl font-bold">BudgetProyect</h1>
-      <div>
-        <a href="{% url 'main' %}" class="text-blue-500 font-medium hover:underline">About Us</a>
-        <a href="{% url 'account_profile' %}" class="ml-4 text-gray-600 hover:text-blue-500">Profile</a>
-        <a href="{% url 'transactions' %}" class="ml-4 text-gray-600 hover:text-blue-500">Transactions</a>        
-        <a href="#" class="ml-4 text-gray-600 hover:text-blue-500">Log out</a>
-      </div>
+  <div class="container mx-auto flex justify-between items-center">
+    <h1 class="text-2xl font-bold">BudgetProyect</h1>
+    
+    <!-- Desktop Navigation (hidden on mobile) -->
+    <div class="hidden md:block">
+      <a href="{% url 'main' %}" class="text-blue-500 font-medium hover:underline">About Us</a>
+      <a href="{% url 'account_profile' %}" class="ml-4 text-gray-600 hover:text-blue-500">Profile</a>
+      <a href="{% url 'transactions' %}" class="ml-4 text-gray-600 hover:text-blue-500">Transactions</a>        
+      <a href="/accounts/logout/" class="ml-4 text-gray-600 hover:text-blue-500">Log out</a>
     </div>
-  </nav> 
+    
+    <!-- Mobile Menu Button (hidden on desktop) -->
+    <button id="mobile-menu-button" class="md:hidden text-gray-600 hover:text-blue-500 focus:outline-none">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+  </div>
+  
+  <!-- Mobile Menu (hidden by default) -->
+  <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+    <a href="{% url 'main' %}" class="block py-2 text-gray-600 hover:text-blue-500">About Us</a>
+    <a href="{% url 'account_profile' %}" class="block py-2 text-gray-600 hover:text-blue-500">Profile</a>
+    <a href="{% url 'transactions' %}" class="block py-2 text-gray-600 hover:text-blue-500">Transactions</a>
+    <a href="/accounts/logout/" class="block py-2 text-gray-600 hover:text-blue-500">Log out</a>
+  </div>
+</nav>
+
+<script>
+  // Toggle mobile menu
+  const mobileMenuButton = document.getElementById('mobile-menu-button');
+  const mobileMenu = document.getElementById('mobile-menu');
+  
+  mobileMenuButton.addEventListener('click', () => {
+    mobileMenu.classList.toggle('hidden');
+  });
+</script>
