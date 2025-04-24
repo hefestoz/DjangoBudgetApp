@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+
+
 
 class Transaction(models.Model):
     TYPE_CHOICES = [
@@ -26,14 +29,6 @@ class Transaction(models.Model):
         expenses = Transaction.objects.filter(user=request.user, type='expense').aggregate(total=models.Sum('amount'))['total'] or 0
         balance = incomes - expenses
         return balance
-    
-    @classmethod
-    def total_balance(self):
-        total_income = Transaction.objects.filter(type='income').aggregate(total=models.Sum('amount'))['total'] or 0
-        total_expense = Transaction.objects.filter(type='expense').aggregate(total=models.Sum('amount'))['total'] or 0
-        balance = total_income - total_expense
-        return balance
-    
 
     def total_income(request):
         incomes = Transaction.objects.filter(user=request.user, type='income').aggregate(total=models.Sum('amount'))['total'] or 0

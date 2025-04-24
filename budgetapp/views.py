@@ -57,7 +57,7 @@ def transactions_info(request):
     }
     return render(request, 'budgetapp/transactions.html', context)
 
-#API endpoint for totals "api/transactions/"
+#API endpoint for transactions "api/transactions/"
 @api_view(['GET', 'POST' , 'DELETE'])
 def transaction_list(request):
     if request.method == 'GET':
@@ -77,31 +77,35 @@ def transaction_list(request):
         transaction.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-#API endpoint for totals "api/totals/"
-@api_view(['GET'])
-def transaction_totals(request):
-    balance = Transaction.total_balance()
-    total_income = Transaction.total_income()
-    total_expense = Transaction.total_expense()
-    return Response({'balance': balance, 
-                     'total_income': total_income,
-                     'total_expense': total_expense}) 
 
-#API endpoint for users "api/users/"
+#API endpoint for users includes financial summary
 @api_view(['GET'])
 def user_list(request):
+
     users = User.objects.all()
+
     user_data = []
 
     for user in users:
+         # mock request created to get the user's financial summary, this help to avoid circular import
+        from django.test import RequestFactory
+        mock_request = RequestFactory().get('/')
+        mock_request.user = user
+        transactions = Transaction.objects.filter(user=user)  
+    
         user_data.append({
             "username": user.username,
             "first_name": user.first_name,
             "last_name": user.last_name,
             "email": user.email,
             "date_joined": user.date_joined,
+            "financial_summary": {
+                "balance": Transaction.total_balance_for_user(mock_request),
+                "total_income": Transaction.total_income(mock_request),
+                "total_expense": Transaction.total_expense(mock_request),
+                "transactions_count": transactions.count() 
+                } 
             })  
-
     return Response(user_data)
 
 #view for user profile page after Login
