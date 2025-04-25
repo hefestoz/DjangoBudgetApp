@@ -1,5 +1,4 @@
 from django.urls import path
-from .views import user_profile
 from . import views
 
 urlpatterns = [
@@ -7,5 +6,7 @@ urlpatterns = [
     path("transactions/", views.transactions_info, name="transactions"),
     path("api/transactions/", views.transaction_list, name="transaction_list"),
     path('api/users/', views.user_list, name='user_list'),
-    path('accounts/profile/', user_profile, name='account_profile'),
+    path('accounts/profile/', views.user_profile, name='account_profile'),
+    path('export/csv/', views.export_transactions_csv, name='export_transactions_csv'),
+    path('export/pdf/', views.export_transactions_pdf, name='export_transactions_pdf'),
     ]

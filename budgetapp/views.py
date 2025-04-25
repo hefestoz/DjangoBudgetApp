@@ -1,3 +1,4 @@
+import io
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.http import HttpResponse
@@ -8,7 +9,9 @@ from rest_framework import status
 from .serializers import TransactionSerializer
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-
+from django.template.loader import render_to_string
+import csv
+from fpdf import FPDF, HTMLMixin, HTML2FPDF
 
 def index(request):
 
@@ -56,6 +59,107 @@ def transactions_info(request):
         'balance': balance,
     }
     return render(request, 'budgetapp/transactions.html', context)
+
+def export_transactions_csv(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="transactions.csv"'
+
+    writer = csv.writer(response)
+
+    writer.writerow(['Date', 'Type', 'Amount', 'Description'])
+
+    for transaction in transactions:
+        writer.writerow([
+            transaction.date,
+            transaction.type, 
+            transaction.amount, 
+            transaction.description, 
+        ])  
+    return response
+
+
+class HTML2PDF(HTMLMixin, FPDF):
+    pass
+
+def export_transactions_pdf(request):
+    from datetime import datetime
+    transactions = Transaction.objects.filter(user=request.user)
+    
+    # Calculate totals
+    total_income = sum(t.amount for t in transactions if t.type == 'income')
+    total_expense = sum(t.amount for t in transactions if t.type == 'expense')
+    balance = total_income - total_expense
+
+    # Create PDF
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_page()
+    pdf.set_font('Arial', '', 12)
+
+    # Header
+    pdf.set_font('Arial', 'B', 18)
+    pdf.cell(0, 10, 'BudgetProyect', 0, 1)
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 6, f'User: {request.user.get_username()}', 0, 1)
+    pdf.cell(0, 6, f'Date: {datetime.now().strftime("%Y-%m-%d")}', 0, 1)
+    pdf.ln(10)  # Add some space
+
+    # Summary section
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, 'Financial Summary', 0, 1)
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 6, f'Total Income: ${total_income}', 0, 1)
+    pdf.cell(0, 6, f'Total Expense: ${total_expense}', 0, 1)
+    pdf.cell(0, 6, f'Balance: ${balance}', 0, 1)
+    pdf.ln(10)  # Add some space
+
+    # Transactions table header
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, 'Transaction Details', 0, 1)
+    
+    # Table column widths
+    col_widths = [40, 40, 40, 70]  # Adjust as needed
+    
+    # Table header
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_fill_color(240, 240, 240)  # Light gray background
+    pdf.cell(col_widths[0], 10, 'Date', 1, 0, 'L', 1)
+    pdf.cell(col_widths[1], 10, 'Type', 1, 0, 'L', 1)
+    pdf.cell(col_widths[2], 10, 'Amount', 1, 0, 'L', 1)
+    pdf.cell(col_widths[3], 10, 'Description', 1, 1, 'L', 1)
+    
+    # Table rows
+    pdf.set_font('Arial', '', 12)
+    pdf.set_fill_color(255, 255, 255)  # White background
+    for t in transactions:
+        # Check if we need a new page
+        if pdf.get_y() > 250:  # Near bottom of page
+            pdf.add_page()
+            # Reprint table header on new page
+            pdf.set_font('Arial', 'B', 12)
+            pdf.set_fill_color(240, 240, 240)
+            pdf.cell(col_widths[0], 10, 'Date', 1, 0, 'L', 1)
+            pdf.cell(col_widths[1], 10, 'Type', 1, 0, 'L', 1)
+            pdf.cell(col_widths[2], 10, 'Amount', 1, 0, 'L', 1)
+            pdf.cell(col_widths[3], 10, 'Description', 1, 1, 'L', 1)
+            pdf.set_font('Arial', '', 12)
+            pdf.set_fill_color(255, 255, 255)
+        
+        pdf.cell(col_widths[0], 10, t.date.strftime('%Y-%m-%d'), 1, 0, 'L', 1)
+        pdf.cell(col_widths[1], 10, t.get_type_display(), 1, 0, 'L', 1)
+        pdf.cell(col_widths[2], 10, f'${t.amount}', 1, 0, 'L', 1)
+        pdf.cell(col_widths[3], 10, t.description or '-', 1, 1, 'L', 1)
+
+    # generate pdf to buffer
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type='application/pdf', headers={
+        'Content-Disposition': 'attachment; filename="transactions.pdf"',
+    })
+    return response
+
 
 #API endpoint for transactions "api/transactions/"
 @api_view(['GET', 'POST' , 'DELETE'])
