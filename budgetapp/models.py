@@ -1,7 +1,18 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 
+class Category(models.Model):
+    name = models.CharField(max_length=100)
 
+    def __str__(self):
+        return self.name
+
+class Subcategory(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.category.name} - {self.name}"
 
 class Transaction(models.Model):
     TYPE_CHOICES = [
@@ -14,14 +25,24 @@ class Transaction(models.Model):
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     amount = models.IntegerField()  
     description = models.TextField(blank=True)
-
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
+    subcategory = models.ForeignKey(Subcategory, on_delete=models.SET_NULL, null=True, blank=True)
     
+    # automatically set type based on category
+    def save(self, *args, **kwargs):
+            
+            if self.category:
+                if self.category.name.lower() == 'paycheck':
+                    self.type = 'income'
+                else:
+                    self.type = 'expense'
+            super().save(*args, **kwargs)
+
     def totaltransaction(self):
         if self.type == 'income':
             return self.amount
         else:
             return -self.amount
-    
     
     def total_balance_for_user(request):
         user = request.user

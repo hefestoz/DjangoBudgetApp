@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-    'budgetapp',
+    'budgetapp.apps.BudgetappConfig',
     'rest_framework',
     'allauth',
     'allauth.account',

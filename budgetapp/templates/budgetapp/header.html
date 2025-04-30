@@ -4,7 +4,7 @@
     
     <!-- Desktop Navigation (hidden on mobile) -->
     <div class="hidden md:block">
-      <a href="{% url 'main' %}" class="text-blue-500 font-medium hover:underline">About Us</a>
+      <a href="{% url 'financial-summary' %}" class="text-blue-500 font-medium hover:underline">Summary</a>
       <a href="{% url 'account_profile' %}" class="ml-4 text-gray-600 hover:text-blue-500">Profile</a>
       <a href="{% url 'transactions' %}" class="ml-4 text-gray-600 hover:text-blue-500">Transactions</a>        
       <a href="/accounts/logout/" class="ml-4 text-gray-600 hover:text-blue-500">Log out</a>
@@ -20,7 +20,7 @@
   
   <!-- Mobile Menu (hidden by default) -->
   <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
-    <a href="{% url 'main' %}" class="block py-2 text-gray-600 hover:text-blue-500">About Us</a>
+    <a href="{% url 'financial-summary' %}" class="block py-2 text-gray-600 hover:text-blue-500">Summary</a>
     <a href="{% url 'account_profile' %}" class="block py-2 text-gray-600 hover:text-blue-500">Profile</a>
     <a href="{% url 'transactions' %}" class="block py-2 text-gray-600 hover:text-blue-500">Transactions</a>
     <a href="/accounts/logout/" class="block py-2 text-gray-600 hover:text-blue-500">Log out</a>

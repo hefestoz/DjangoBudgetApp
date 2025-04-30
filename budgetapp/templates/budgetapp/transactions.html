@@ -49,9 +49,10 @@
           <thead>
             <tr class="bg-gray-100 text-left">
               <th class="p-2">Fecha</th>
-              <th class="p-2">Tipo</th>
               <th class="p-2">Monto</th>
               <th class="p-2">Descripción</th>
+              <th class="p-2">Categoría</th>
+              <th class="p-2">Subcategoría</th> 
               <th class="p-2">Acciones</th>
             </tr>
           </thead>
@@ -59,11 +60,12 @@
             {% for t in transactions %}
             <tr class="border-t">
               <td class="p-2">{{ t.date }}</td>
-              <td class="p-2">{{ t.get_type_display }}</td>
               <td class="p-2 {% if t.type == 'income' %}text-green-600{% else %}text-red-600{% endif %}">
                 {% if t.type == 'expense' %}-{% endif %}${{ t.amount }}
               </td>
               <td class="p-2">{{ t.description }}</td>
+              <td class="p-2">{{ t.category.name }}</td>
+              <td class="p-2">{{ t.subcategory.name }}</td> 
               <td class="p-2">
                 <form method="POST" action="{% url 'transactions' %}" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta transacción?');">
                     {% csrf_token %}
@@ -80,33 +82,69 @@
           </tbody>
         </table>
       </div>
+      <button onclick="openModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+        + Agregar Transacción
+      </button>
 
- <!-- Mobile Cards (shown on mobile) -->
- <div class="md:hidden space-y-4">
+      {% include 'budgetapp/add_transaction.html' %}
+
+      <script>
+        function openModal() {
+          document.getElementById('transactionModal').classList.remove('hidden');
+        }
+    
+        function closeModal() {
+          document.getElementById('transactionModal').classList.add('hidden');
+        }
+    
+        document.getElementById('id_category')?.addEventListener('change', function () {
+          const categoryId = this.value;
+          const subcatField = document.getElementById('id_subcategory');
+          subcatField.innerHTML = '<option>Cargando...</option>';
+    
+          fetch(`/api/subcategories/?category=${categoryId}`)
+            .then(response => response.json())
+            .then(data => {
+              subcatField.innerHTML = '<option value="">---------</option>';
+              data.forEach(subcat => {
+                const option = document.createElement('option');
+                option.value = subcat.id;
+                option.textContent = subcat.name;
+                subcatField.appendChild(option);
+              });
+            });
+        });
+      </script>
+    
+    </body>
+    </html>
+    
+      <!-- Mobile Cards (shown on mobile) -->
+<!-- Vista para móviles: tarjetas -->
+<div class="md:hidden space-y-4">
   {% for t in transactions %}
-  <div class="border rounded-lg p-4">
-    <div class="flex justify-between">
-      <span class="font-medium">{{ t.date }}</span>
-      <span class="{% if t.type == 'income' %}text-green-600{% else %}text-red-600{% endif %}">
-        {% if t.type == 'expense' %}-{% endif %}${{ t.amount }}
-      </span>
+    <div class="bg-white shadow rounded-lg p-4">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-sm text-gray-500">{{ t.date }}</p>
+        <p class="text-sm font-semibold {% if t.type == 'income' %}text-green-600{% else %}text-red-600{% endif %}">
+          {% if t.type == 'expense' %}-{% endif %}${{ t.amount }}
+        </p>
+      </div>
+      <p class="text-sm text-gray-700 mb-1"><strong>Descripción:</strong> {{ t.description }}</p>
+      <p class="text-sm text-gray-700"><strong>Categoría:</strong> {{ t.category.name }}</p>
+      <p class="text-sm text-gray-700 mb-2"><strong>Subcategoría:</strong> {{ t.subcategory.name|default:"-" }}</p>
+      <form method="POST" action="{% url 'transactions' %}" onsubmit="return confirm('¿Eliminar esta transacción?');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="delete_id" value="{{ t.id }}">
+        <button type="submit" class="text-red-600 text-sm underline">Eliminar</button>
+      </form>
     </div>
-    <div class="text-sm text-gray-500 mt-1">{{ t.get_type_display }}</div>
-    <div class="mt-2">{{ t.description }}</div>
-    <form method="POST" action="{% url 'transactions' %}" 
-          onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta transacción?');"
-          class="mt-3">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="delete">
-      <input type="hidden" name="delete_id" value="{{ t.id }}">
-      <button type="submit" class="text-red-600 hover:underline text-sm">Eliminar</button>
-    </form>
-  </div>
   {% empty %}
-  <div class="text-center py-4">No hay transacciones aún.</div>
+    <p class="text-center text-gray-500">No hay transacciones aún.</p>
   {% endfor %}
 </div>
-</div>
+
 
           <!-- Add more rows dynamically -->
         </tbody>
@@ -115,48 +153,7 @@
   </div>
 </body>
 </html>
-<!-- Botón +  Form hidden by default -->
-<div class="flex justify-end mb-4 sticky top-4 z-10">
-  <button id="toggleFormBtn" class="bg-green-600 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-green-700 shadow-md">
-    +
-  </button>
-</div>
 
-<!-- Form Container with better mobile handling -->
-<div id="transactionForm" class="hidden bg-white rounded-xl shadow p-4 md:p-6 mb-6 mx-2 md:mx-0 overflow-x-hidden">
-  <h2 class="text-xl font-semibold mb-4">Agregar Transacción</h2>
-  <form method="POST" action="{% url 'transactions' %}">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="create">
-    
-    <div class="grid grid-cols-1 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Tipo</label>
-        <select name="type" class="w-full border rounded px-3 py-2" required>
-          <option value="">Seleccionar</option>
-          <option value="income">Ingreso</option>
-          <option value="expense">Gasto</option>
-        </select>
-      </div>
-      
-      <div>
-        <label class="block text-sm font-medium mb-1">Monto</label>
-        <input type="number" name="amount" class="w-full border rounded px-3 py-2" required>
-      </div>
-      
-      <div>
-        <label class="block text-sm font-medium mb-1">Descripción</label>
-        <input type="text" name="description" class="w-full border rounded px-3 py-2">
-      </div>
-    </div>
-    
-    <div class="mt-4 flex justify-end">
-      <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 w-full md:w-auto">
-        Guardar
-      </button>
-    </div>
-  </form>
-</div>
 
 <script>
   const toggleBtn = document.getElementById('toggleFormBtn');
@@ -172,5 +169,5 @@
     }
   });
 </script>
-  
+
 {% endblock %}

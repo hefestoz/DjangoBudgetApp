@@ -1,0 +1,70 @@
+{% extends "budgetapp/base.html" %}
+{% block title %}financial_summary{% endblock %}
+
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Resumen Financiero</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans p-6">
+
+  <!-- Título -->
+  <div class="text-center mb-8">
+    <h1 class="text-3xl font-bold">📊 Resumen Financiero</h1>
+    <p class="text-gray-600 mt-1">Visualiza tus gastos y controla tu presupuesto</p>
+  </div>
+
+  <!-- Tarjetas de resumen -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
+    <div class="bg-green-100 text-green-800 p-4 rounded-lg shadow text-center">
+      <p class="text-sm uppercase font-semibold">Ingresos</p>
+      <p class="text-2xl font-bold">${{ total_income }}</p>
+    </div>
+    <div class="bg-red-100 text-red-800 p-4 rounded-lg shadow text-center">
+      <p class="text-sm uppercase font-semibold">Gastos</p>
+      <p class="text-2xl font-bold">${{ total_expense }}</p>
+    </div>
+    <div class="bg-blue-100 text-blue-800 p-4 rounded-lg shadow text-center">
+      <p class="text-sm uppercase font-semibold">Saldo</p>
+      <p class="text-2xl font-bold">${{ balance }}</p>
+    </div>
+  </div>
+
+  <!-- Gráfico de pastel -->
+  <div class="bg-white p-6 rounded-xl shadow max-w-4xl mx-auto">
+    <h2 class="text-lg font-semibold mb-4 text-center">Distribución de gastos por categoría</h2>
+    <div class="relative h-72">
+      <canvas id="expensesChart" class="w-full h-full"></canvas>
+    </div>
+  </div>
+
+  <!-- Script Chart.js -->
+  <script>
+    const ctx = document.getElementById('expensesChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: {{ categories|safe }},
+        datasets: [{
+          label: 'Gastos por categoría',
+          data: {{ totals|safe }},
+          backgroundColor: [
+            '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6',
+            '#EC4899', '#F43F5E', '#14B8A6', '#A855F7', '#6366F1'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+  </script>
+
+</body>
+</html>
+
+{% endblock %}

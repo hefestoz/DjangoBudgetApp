@@ -1,8 +1,8 @@
 import io
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.http import HttpResponse
-from .models import Transaction
+from django.http import HttpResponse, JsonResponse  
+from .models import Transaction,Category, Subcategory
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
@@ -10,8 +10,10 @@ from .serializers import TransactionSerializer
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.template.loader import render_to_string
+from django.db.models import Sum
 import csv
 from fpdf import FPDF, HTMLMixin, HTML2FPDF
+from .forms import TransactionForm
 
 def index(request):
 
@@ -26,15 +28,21 @@ def transactions_info(request):
 
         if action == 'create':
             # take data from form for creation
-            type = request.POST.get('type')
             amount = request.POST.get('amount')
             description = request.POST.get('description')
-            # create transaction in database
+            category = request.POST.get('category')
+            subcategory_id = request.POST.get('subcategory')
+
+            #create transaction in database
+            category = Category.objects.get(pk=category)
+            subcategory = Subcategory.objects.get(pk=subcategory_id)
             Transaction.objects.create(
                 user=request.user, 
                 type=type, 
                 amount=amount, 
-                description=description
+                description=description,
+                category=category,
+                subcategory= subcategory,
             )
         
         elif action == 'delete':
@@ -47,18 +55,64 @@ def transactions_info(request):
         return redirect(reverse('transactions'))
     #------------------------------------------------------------------------------
     
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')  # Get all transactions sorted by date
+    transactions = Transaction.objects.filter(user=request.user).order_by('date')  # Get all transactions sorted by date
     balance = Transaction.total_balance_for_user(request=request)
     total_income = Transaction.total_income(request=request)
     total_expense = Transaction.total_expense(request=request)
+    category = Category.objects.all() 
+    form = TransactionForm()
 
     context = {
         'transactions': transactions,
         'total_income': total_income,
         'total_expense': total_expense,
         'balance': balance,
+        'categories': category,
+        'form': form,
     }
     return render(request, 'budgetapp/transactions.html', context)
+
+def add_transaction(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return redirect(reverse('transactions'))
+    else:
+        form = TransactionForm()
+
+    return render(request, 'budgetapp/add_transaction.html', {'form': form})
+
+@login_required
+def financial_summary(request):
+    user = request.user
+    transactions = Transaction.objects.filter(user=user)
+    balance = Transaction.total_balance_for_user(request=request)
+    total_income = Transaction.total_income(request=request)
+    total_expense = Transaction.total_expense(request=request)
+
+    # Totales por categoría (solo gastos)
+    expenses_by_category = (
+        transactions
+        .filter(type='expense')
+        .values('category__name')
+        .annotate(total=Sum('amount'))
+        .order_by('-total')
+    )
+
+    categories = [item['category__name'] or "Sin categoría" for item in expenses_by_category]
+    totals = [item['total'] for item in expenses_by_category]
+
+    return render(request, 'budgetapp/financial_summary.html', {
+        'categories': categories,
+        'totals': totals,
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'balance': balance,
+    })
+
 
 def export_transactions_csv(request):
     transactions = Transaction.objects.filter(user=request.user).order_by('-date')
@@ -67,14 +121,16 @@ def export_transactions_csv(request):
 
     writer = csv.writer(response)
 
-    writer.writerow(['Date', 'Type', 'Amount', 'Description'])
+    writer.writerow(['Date', 'Type', 'Amount', 'Description', 'Category', 'Subcategory'])
 
     for transaction in transactions:
         writer.writerow([
             transaction.date,
             transaction.type, 
             transaction.amount, 
-            transaction.description, 
+            transaction.description,
+            transaction.category.name if transaction.category else '-',
+            transaction.subcategory.name if transaction.subcategory else '-',
         ])  
     return response
 
@@ -211,6 +267,11 @@ def user_list(request):
                 } 
             })  
     return Response(user_data)
+
+def get_subcategories(request):
+    category_id = request.GET.get('category')
+    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
+    return JsonResponse(list(subcategories), safe=False)
 
 #view for user profile page after Login
 @login_required
