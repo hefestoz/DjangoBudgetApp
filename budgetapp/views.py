@@ -278,6 +278,7 @@ def user_list(request):
                 for transaction in transactions
             ]
         })
+        return Response(user_data)
 
 @api_view(['GET'])
 def user_detail(request, user_id):
