@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.template.loader import render_to_string
 from django.db.models import Sum
+from django.test import RequestFactory
 import csv
 from fpdf import FPDF, HTMLMixin, HTML2FPDF
 from .forms import TransactionForm
@@ -248,7 +249,7 @@ def user_list(request):
 
     for user in users:
          # mock request created to get the user's financial summary, this help to avoid circular import
-        from django.test import RequestFactory
+        
         mock_request = RequestFactory().get('/')
         mock_request.user = user
         transactions = Transaction.objects.filter(user=user)  
@@ -263,10 +264,62 @@ def user_list(request):
                 "balance": Transaction.total_balance_for_user(mock_request),
                 "total_income": Transaction.total_income(mock_request),
                 "total_expense": Transaction.total_expense(mock_request),
-                "transactions_count": transactions.count() 
-                } 
-            })  
+                "transactions_count": transactions.count()
+            },
+            "transaction_list": [
+                {
+                    "date": transaction.date.strftime('%Y-%m-%d'),
+                    "type": transaction.get_type_display(),
+                    "amount": f"${transaction.amount}",
+                    "description": transaction.description or '-',
+                    "category": transaction.category.name if transaction.category else '-',
+                    "subcategory": transaction.subcategory.name if transaction.subcategory else '-',
+                }
+                for transaction in transactions
+            ]
+        })
+
+@api_view(['GET'])
+def user_detail(request, user_id):
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
+
+    transactions = Transaction.objects.filter(user=user)
+
+    mock_request = RequestFactory().get('/')
+    mock_request.user = user
+
+    transaction_list = [
+        {
+            "date": t.date.strftime('%Y-%m-%d'),
+            "type": t.get_type_display(),
+            "amount": f'${t.amount}',
+            "description": t.description or '-',
+            "category": t.category.name if t.category else '-',
+            "subcategory": t.subcategory.name if t.subcategory else '-',
+        }
+        for t in transactions
+    ]
+
+    user_data = {
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "date_joined": user.date_joined,
+        "financial_summary": {
+            "balance": Transaction.total_balance_for_user(mock_request),
+            "total_income": Transaction.total_income(mock_request),
+            "total_expense": Transaction.total_expense(mock_request),
+            "transactions_count": transactions.count()
+        },
+        "transaction_list": transaction_list
+    }
+
     return Response(user_data)
+
 
 def get_subcategories(request):
     category_id = request.GET.get('category')
